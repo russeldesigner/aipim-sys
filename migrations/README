@@ -1,0 +1,10 @@
+Migrations gerenciadas via Flask-Migrate.
+
+# Setup inicial (primeira vez):
+flask db init      # já feito — esta pasta é o resultado
+flask db migrate -m "initial"
+flask db upgrade
+
+# Após mudanças no models.py:
+flask db migrate -m "descricao da mudança"
+flask db upgrade

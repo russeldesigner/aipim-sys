@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0E1E18">
+<title>Aipim de Tinguá Sys</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Poppins+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body data-pagina="{{ pagina }}">
+
+<!-- ══════════════════ OVERLAY MOBILE ══════════════════ -->
+<div class="nav-overlay" id="nav-overlay" onclick="fecharMenu()"></div>
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">🌿</div>
+    <div>
+      <div class="sb-logo-txt">Aipim de Tinguá<span>Sys</span></div>
+      <div class="sb-logo-sub">Gestão da Produção</div>
+    </div>
+    <button class="sb-close" onclick="fecharMenu()">✕</button>
+  </div>
+  <div class="sb-perfil">
+    <div class="sb-perfil-dot" id="sp-dot"></div>
+    <div>
+      <div class="sb-perfil-nome" id="sp-nome">{{ current_user.nome }}</div>
+      <div class="sb-perfil-perfil" id="sp-perfil">{{ current_user.perfil }}</div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <a href="/dashboard" class="sb-item {% if pagina=='dashboard' %}ativo{% endif %}" data-pg="dashboard">
+      <span class="sb-icon">📊</span><span>Dashboard</span>
+    </a>
+    <a href="/lancamentos" class="sb-item {% if pagina=='lancamentos' %}ativo{% endif %}" data-pg="lancamentos">
+      <span class="sb-icon">📅</span><span>Lançamentos</span>
+    </a>
+    <a href="/despesas" class="sb-item {% if pagina=='despesas' %}ativo{% endif %}" data-pg="despesas"
+       {% if not current_user.pode_ver_financeiro %}style="opacity:.4;pointer-events:none;"{% endif %}>
+      <span class="sb-icon">💸</span><span>Despesas</span>
+      {% if not current_user.pode_ver_financeiro %}<span class="sb-lock">🔒</span>{% endif %}
+    </a>
+    <a href="/cadastros" class="sb-item {% if pagina=='cadastros' %}ativo{% endif %}" data-pg="cadastros"
+       {% if not current_user.pode_gerenciar %}style="opacity:.4;pointer-events:none;"{% endif %}>
+      <span class="sb-icon">🗂</span><span>Cadastros</span>
+      {% if not current_user.pode_gerenciar %}<span class="sb-lock">🔒</span>{% endif %}
+    </a>
+  </nav>
+  <div class="sb-footer">
+    <a href="/logout" class="sb-logout">⇠ Sair do sistema</a>
+    <div class="sb-version">v2.0 · Aipim Sys</div>
+  </div>
+</aside>
+
+<!-- ══════════════════ TOPBAR ══════════════════ -->
+<header class="topbar">
+  <button class="topbar-menu" onclick="abrirMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="topbar-titulo" id="topbar-titulo">
+    {% if pagina=='dashboard' %}📊 Dashboard
+    {% elif pagina=='lancamentos' %}📅 Lançamentos
+    {% elif pagina=='despesas' %}💸 Despesas
+    {% elif pagina=='cadastros' %}🗂 Cadastros
+    {% endif %}
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-data" id="topbar-data"></div>
+    <button class="topbar-save" id="btn-salvar" onclick="salvar()" style="display:none;">💾</button>
+  </div>
+</header>
+
+<!-- ══════════════════ CONTEÚDO ══════════════════ -->
+<main class="main-content" id="main-content">
+
+  <!-- BARRA DE PERÍODO -->
+  <div class="periodo-bar" id="periodo-bar">
+    <div class="periodo-tabs" id="periodo-tabs">
+      <button class="ptab ativo" data-tipo="dia"        onclick="setPeriodo('dia',this)">Dia</button>
+      <button class="ptab"       data-tipo="semana"     onclick="setPeriodo('semana',this)">Semana</button>
+      <button class="ptab"       data-tipo="quinzena"   onclick="setPeriodo('quinzena',this)">Quinzena</button>
+      <button class="ptab"       data-tipo="mensal"     onclick="setPeriodo('mensal',this)">Mensal</button>
+      <button class="ptab"       data-tipo="trimestral" onclick="setPeriodo('trimestral',this)">Trimestral</button>
+      <button class="ptab"       data-tipo="semestral"  onclick="setPeriodo('semestral',this)">Semestral</button>
+      <button class="ptab"       data-tipo="anual"      onclick="setPeriodo('anual',this)">Anual</button>
+    </div>
+    <div class="periodo-nav">
+      <button class="pnav-btn" onclick="navPeriodo(-1)">‹</button>
+      <span class="pnav-label" id="pnav-label">Hoje</span>
+      <button class="pnav-btn" onclick="navPeriodo(1)">›</button>
+    </div>
+  </div>
+
+  <!-- ─── DASHBOARD ─── -->
+  <section id="pg-dashboard" class="pagina {% if pagina=='dashboard' %}ativa{% endif %}">
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi verde"><div class="kpi-lbl">💰 Receita Bruta</div><div class="kpi-val" id="kpi-receita">—</div><div class="kpi-sub" id="kpi-receita-sub">carregando...</div></div>
+      <div class="kpi vermelho"><div class="kpi-lbl">📦 Custo Total</div><div class="kpi-val" id="kpi-custo">—</div><div class="kpi-sub" id="kpi-custo-sub">—</div></div>
+      <div class="kpi azul"><div class="kpi-lbl">💵 Lucro Líquido</div><div class="kpi-val" id="kpi-lucro">—</div><div class="kpi-sub" id="kpi-lucro-sub">—</div></div>
+      <div class="kpi roxo"><div class="kpi-lbl">📊 Margem</div><div class="kpi-val" id="kpi-margem">—</div><div class="kpi-sub" id="kpi-margem-sub">—</div></div>
+    </div>
+    <div class="dash-row">
+      <div class="card">
+        <div class="card-head"><div class="card-titulo">Evolução — Receita × Custo</div><div class="card-sub" id="grafico-sub">—</div></div>
+        <div class="card-body">
+          <div class="grafico-wrap">
+            <svg id="grafico-svg" viewBox="0 0 500 130" preserveAspectRatio="none" style="width:100%;height:130px;">
+              <defs><linearGradient id="gr-rec" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#1A6B50" stop-opacity=".2"/>
+                <stop offset="100%" stop-color="#1A6B50" stop-opacity="0"/>
+              </linearGradient></defs>
+              <line x1="0" y1="33" x2="500" y2="33" stroke="#E8EEEB" stroke-width="1"/>
+              <line x1="0" y1="66" x2="500" y2="66" stroke="#E8EEEB" stroke-width="1"/>
+              <line x1="0" y1="99" x2="500" y2="99" stroke="#E8EEEB" stroke-width="1"/>
+              <path id="svg-area" fill="url(#gr-rec)"/>
+              <path id="svg-rec"  fill="none" stroke="#1A6B50" stroke-width="2.5" stroke-linejoin="round"/>
+              <path id="svg-cus"  fill="none" stroke="#1E3A8A" stroke-width="2" stroke-dasharray="6,3" stroke-linejoin="round"/>
+              <g id="svg-pts"></g>
+              <g id="svg-xlabels"></g>
+            </svg>
+          </div>
+          <div class="grafico-legenda">
+            <span><span style="display:inline-block;width:14px;height:2px;background:#1A6B50;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>Receita</span>
+            <span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed #1E3A8A;vertical-align:middle;margin-right:4px;"></span>Custo</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-titulo">Margem por Produto</div></div>
+        <div class="card-body" id="barras-margem"></div>
+      </div>
+    </div>
+    <div class="dash-row3">
+      <div class="card">
+        <div class="card-head"><div class="card-titulo">Custos por Categoria</div></div>
+        <div class="card-body"><table class="dash-tbl"><thead><tr><th>Categoria</th><th>R$</th><th>%</th></tr></thead><tbody id="tbody-custos-dash"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-titulo">Produção KG</div></div>
+        <div class="card-body">
+          <div class="kg-grid">
+            <div class="kg-card"><div class="kg-lbl">KG Produzido</div><div class="kg-val verde" id="d-kg-prod">—</div></div>
+            <div class="kg-card"><div class="kg-lbl">KG Vendido</div><div class="kg-val azul" id="d-kg-vend">—</div></div>
+            <div class="kg-card"><div class="kg-lbl">Perdas</div><div class="kg-val vermelho" id="d-kg-perd">—</div></div>
+            <div class="kg-card"><div class="kg-lbl">Preço Médio</div><div class="kg-val roxo" id="d-preco-med">—</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-titulo">KM Frota</div></div>
+        <div class="card-body" id="d-km-body">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── LANÇAMENTOS ─── -->
+  <section id="pg-lancamentos" class="pagina {% if pagina=='lancamentos' %}ativa{% endif %}">
+
+    <!-- resumo do período (semana/mês/etc.) -->
+    <div class="lanc-resumo oculto" id="lanc-resumo">
+      <div class="lres-item"><span class="lres-lbl">Receita</span><span class="lres-val verde" id="lr-rec">—</span></div>
+      <div class="lres-sep"></div>
+      <div class="lres-item"><span class="lres-lbl">Custo</span><span class="lres-val vermelho" id="lr-cus">—</span></div>
+      <div class="lres-sep"></div>
+      <div class="lres-item"><span class="lres-lbl">Lucro</span><span class="lres-val azul" id="lr-luc">—</span></div>
+      <div class="lres-sep"></div>
+      <div class="lres-item"><span class="lres-lbl">Margem</span><span class="lres-val roxo" id="lr-mar">—</span></div>
+    </div>
+
+    <!-- Modo DIA: formulário de lançamento -->
+    <div id="lanc-form-dia">
+
+      <!-- barra de data + status -->
+      <div class="date-bar">
+        <div class="periodo-nav" style="margin-left:0;">
+          <button class="pnav-btn" onclick="navPeriodo(-1)">‹</button>
+          <div class="pnav-label" id="lanc-data-label" style="min-width:110px;"></div>
+          <button class="pnav-btn" onclick="navPeriodo(1)">›</button>
+        </div>
+        <div id="lanc-info-txt">Navegue para selecionar o dia</div>
+        <span class="status-pill" id="lanc-status">Novo</span>
+        <div style="margin-left:auto;">
+          <button class="btn-salvar-lanc" style="width:auto;margin:0;padding:8px 18px;" onclick="salvarLancamento()">💾 Salvar</button>
+        </div>
+      </div>
+
+      <div class="lanc-layout">
+        <div class="lanc-main">
+
+          <!-- ── ROÇA ── -->
+          <div class="modulo m-roca open" id="mod-roca" data-area="roca">
+            <div class="mod-head" onclick="toggleMod('mod-roca')">
+              <div class="mod-icon">🌿</div>
+              <div class="mod-info"><div class="mod-titulo">Roça</div><div class="mod-sub">Caixas · peso · trator</div></div>
+              <div class="mod-badge" id="badge-roca">—</div>
+              <div class="mod-chev">▼</div>
+            </div>
+            <div class="mod-body">
+              <div class="s-titulo">🌿 Colheita</div>
+              <div class="fg c2">
+                <div class="fld"><div class="fld-lbl">CX Mad. Branca</div><input class="fld-in" type="number" id="cx-mad-b" value="0" min="0" oninput="atualizarLancSide()"></div>
+                <div class="fld"><div class="fld-lbl">CX Plást. Branca</div><input class="fld-in" type="number" id="cx-pl-b" value="0" min="0" oninput="atualizarLancSide()"></div>
+                <div class="fld"><div class="fld-lbl">CX Plást. Amarela</div><input class="fld-in" type="number" id="cx-pl-a" value="0" min="0" oninput="atualizarLancSide()"></div>
+                <div class="fld"><div class="fld-lbl">CX Amarela</div><input class="fld-in" type="number" id="cx-am" value="0" min="0" oninput="atualizarLancSide()"></div>
+                <div class="fld"><div class="fld-lbl">Peso Médio (kg/cx)</div><input class="fld-in" type="number" id="peso-med" value="0" step="0.1" oninput="atualizarLancSide()"></div>
+                <div class="fld"><div class="fld-lbl">Hrs Trator 1</div><input class="fld-in" type="number" id="hrs-t1" value="0" step="0.5"></div>
+                <div class="fld"><div class="fld-lbl">Hrs Trator 2</div><input class="fld-in" type="number" id="hrs-t2" value="0" step="0.5"></div>
+              </div>
+              <div class="custo-bloco" id="cb-roca-mo">
+                <div class="s-titulo">💰 MO Roça</div>
+                <div class="fg c2">
+                  <div class="fld"><div class="fld-lbl">MO Roça (R$)</div><input class="fld-in" type="number" id="mo-roca" value="0" step="0.01" oninput="atualizarLancSide()"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── GALPÃO ── -->
+          <div class="modulo m-galp open" id="mod-galp" data-area="galp">
+            <div class="mod-head" onclick="toggleMod('mod-galp')">
+              <div class="mod-icon">🏭</div>
+              <div class="mod-info"><div class="mod-titulo">Galpão</div><div class="mod-sub">Abertura · produção · perdas · estoque</div></div>
+              <div class="mod-badge" id="badge-galp">—</div>
+              <div class="mod-chev">▼</div>
+            </div>
+            <div class="mod-body">
+              <div class="s-titulo">🏭 Produção por Produto</div>
+              <table class="tbl" id="tbl-galp">
+                <thead><tr><th style="width:110px">Produto</th><th>Abertura</th><th>Produção</th><th>Perdas</th><th>Estoque Final</th></tr></thead>
+                <tbody id="tbody-galp">
+                  <!-- preenchido por JS via /api/produtos -->
+                </tbody>
+              </table>
+              <div class="custo-bloco" id="cb-galp-mo">
+                <div class="s-titulo">💰 MO Galpão</div>
+                <div class="fg c2">
+                  <div class="fld"><div class="fld-lbl">MO Galpão (R$)</div><input class="fld-in" type="number" id="mo-galp" value="0" step="0.01" oninput="atualizarLancSide()"></div>
+                  <div class="fld"><div class="fld-lbl">Café / Alimentação (R$)</div><input class="fld-in" type="number" id="cafe" value="0" step="0.01"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── DESCASQUE ── -->
+          <div class="modulo m-desc" id="mod-desc" data-area="desc">
+            <div class="mod-head" onclick="toggleMod('mod-desc')">
+              <div class="mod-icon">✂️</div>
+              <div class="mod-info"><div class="mod-titulo">Descasque</div><div class="mod-sub">Produção da equipe de descasque</div></div>
+              <div class="mod-badge" id="badge-desc">Pendente</div>
+              <div class="mod-chev">▼</div>
+            </div>
+            <div class="mod-body">
+              <div class="s-titulo">✂️ Produção Descasque</div>
+              <div class="fg c3">
+                <div class="fld"><div class="fld-lbl">Kg Descascado</div><input class="fld-in" type="number" id="desc-kg-total" value="0" placeholder="0" oninput="calcDescLiquido()"></div>
+                <div class="fld"><div class="fld-lbl">Kg Refugo</div><input class="fld-in" type="number" id="desc-kg-refugo" value="0" placeholder="0" oninput="calcDescLiquido()"></div>
+                <div class="fld"><div class="fld-lbl">Kg Líquido</div><input class="fld-in calc" id="desc-kg-liq" readonly value="0 kg"></div>
+              </div>
+              <div class="custo-bloco" id="cb-desc-mo">
+                <div class="s-titulo">💰 MO Descasque</div>
+                <div class="fg c2">
+                  <div class="fld"><div class="fld-lbl">MO Descasque (R$)</div><input class="fld-in" type="number" id="mo-desc" value="0" step="0.01" oninput="atualizarLancSide()"></div>
+                  <div class="fld"><div class="fld-lbl">Nº Colaboradores</div><input class="fld-in" type="number" id="desc-n-colab" value="0"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── COZINHA ── -->
+          <div class="modulo m-coz" id="mod-coz" data-area="coz">
+            <div class="mod-head" onclick="toggleMod('mod-coz')">
+              <div class="mod-icon">🍳</div>
+              <div class="mod-info"><div class="mod-titulo">Cozinha</div><div class="mod-sub">Produção de todos os produtos</div></div>
+              <div class="mod-badge" id="badge-coz">Pendente</div>
+              <div class="mod-chev">▼</div>
+            </div>
+            <div class="mod-body">
+              <div class="alerta al-info"><span>ℹ️</span><span>Preencha somente produtos com movimentação no dia.</span></div>
+              <div class="s-titulo">🍳 Produção</div>
+              <table class="tbl">
+                <thead><tr><th style="width:110px">Produto</th><th>Abertura</th><th>Produção</th><th>Perdas</th><th>Estoque Final</th></tr></thead>
+                <tbody id="tbody-coz">
+                  <!-- preenchido por JS via /api/produtos -->
+                </tbody>
+              </table>
+              <div class="custo-bloco" id="cb-coz-mo">
+                <div class="s-titulo">💰 MO Cozinha</div>
+                <div class="fg c3">
+                  <div class="fld"><div class="fld-lbl">MO Cozimento (R$)</div><input class="fld-in" type="number" id="mo-coz" value="0" step="0.01" oninput="atualizarLancSide()"></div>
+                  <div class="fld"><div class="fld-lbl">Imposto (R$)</div><input class="fld-in" type="number" id="imposto" value="0" step="0.01"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── OBRA ── -->
+          <div class="modulo m-obra" id="mod-obra" data-area="obra">
+            <div class="mod-head" onclick="toggleMod('mod-obra')">
+              <div class="mod-icon">🔨</div>
+              <div class="mod-info"><div class="mod-titulo">Obra</div><div class="mod-sub">Atividades e custos de manutenção</div></div>
+              <div class="mod-badge" id="badge-obra">Pendente</div>
+              <div class="mod-chev">▼</div>
+            </div>
+            <div class="mod-body">
+              <div class="s-titulo">🔨 Atividades do Dia</div>
+              <div class="fg c2">
+                <div class="fld"><div class="fld-lbl">Descrição</div><input class="fld-in" type="text" id="obra-desc" placeholder="Ex: Manutenção câmara fria"></div>
+                <div class="fld"><div class="fld-lbl">Responsável</div><input class="fld-in" type="text" id="obra-resp" placeholder="Ex: Jurandi"></div>
+              </div>
+              <div class="custo-bloco" id="cb-obra-mo">
+                <div class="s-titulo">💰 Custos de Obra</div>
+                <div class="fg c3">
+                  <div class="fld"><div class="fld-lbl">MO Obra (R$)</div><input class="fld-in" type="number" id="mo-obra" value="0" step="0.01" oninput="atualizarLancSide()"></div>
+                  <div class="fld"><div class="fld-lbl">Material (R$)</div><input class="fld-in" type="number" id="obra-material" value="0" step="0.01"></div>
+                  <div class="fld"><div class="fld-lbl">Outros (R$)</div><input class="fld-in" type="number" id="obra-outros" value="0" step="0.01"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── LOGÍSTICA ── -->
+          <div class="modulo m-log" id="mod-log" data-area="log">
+            <div class="mod-head" onclick="toggleMod('mod-log')">
+              <div class="mod-icon">🚛</div>
+              <div class="mod-info"><div class="mod-titulo">Logística + Carregamento</div><div class="mod-sub">KM · motoristas · carregamento por produto</div></div>
+              <div class="mod-badge" id="badge-log">Pendente</div>
+              <div class="mod-chev">▼</div>
+            </div>
+            <div class="mod-body">
+              <div class="s-titulo">🚙 Strada</div>
+              <div class="km-row">
+                <div class="fld"><div class="fld-lbl">KM Inicial</div><input class="fld-in" type="number" id="km-ini-s" placeholder="0" oninput="calcKM('s')"></div>
+                <div class="fld"><div class="fld-lbl">KM Final</div><input class="fld-in" type="number" id="km-fim-s" placeholder="0" oninput="calcKM('s')"></div>
+                <div><div class="fld-lbl">Rodados</div><div class="km-box" id="s-km">—</div></div>
+              </div>
+              <div class="s-titulo">🚐 Ducato</div>
+              <div class="km-row">
+                <div class="fld"><div class="fld-lbl">KM Inicial</div><input class="fld-in" type="number" id="km-ini-d" placeholder="0" oninput="calcKM('d')"></div>
+                <div class="fld"><div class="fld-lbl">KM Final</div><input class="fld-in" type="number" id="km-fim-d" placeholder="0" oninput="calcKM('d')"></div>
+                <div><div class="fld-lbl">Rodados</div><div class="km-box" id="d-km">—</div></div>
+              </div>
+              <div class="custo-bloco" id="cb-log-mo">
+                <div class="s-titulo">💰 Motoristas e Despesas</div>
+                <div class="fg c3">
+                  <div class="fld"><div class="fld-lbl">Motorista 1</div><input class="fld-in" type="text" id="mot1" placeholder="Nome"></div>
+                  <div class="fld"><div class="fld-lbl">Motorista 2</div><input class="fld-in" type="text" id="mot2" placeholder="Nome"></div>
+                  <div class="fld"><div class="fld-lbl">Motorista 3</div><input class="fld-in" type="text" id="mot3" placeholder="Nome"></div>
+                  <div class="fld"><div class="fld-lbl">Pedágio (R$)</div><input class="fld-in" type="number" id="pedagio" value="0" step="0.01"></div>
+                  <div class="fld"><div class="fld-lbl">Estacionamento (R$)</div><input class="fld-in" type="number" id="estacionamento" value="0" step="0.01"></div>
+                </div>
+              </div>
+              <div class="s-titulo">📦 Carregamento por Produto</div>
+              <div class="alerta al-av"><span>💡</span><span>Apenas kg carregado (saída). Valores financeiros vão para Despesas E/S.</span></div>
+              <table class="tbl">
+                <thead><tr><th style="width:120px">Produto</th><th>Qtd. Carregada (kg)</th><th>Estoque Disp.</th><th>Saldo</th></tr></thead>
+                <tbody id="tbody-log">
+                  <!-- preenchido por JS -->
+                </tbody>
+                <tfoot><tr>
+                  <td style="padding:6px 4px;font-size:10px;font-weight:700;color:var(--log)">TOTAL</td>
+                  <td><input class="cc-log" id="tot-carga" readonly value="0 kg" style="background:var(--log-lt);border-color:#F9A8D4;color:var(--log);font-weight:600;pointer-events:none;border:1.5px solid;border-radius:6px;padding:5px 6px;width:100%;font-family:'Poppins Mono',monospace;font-size:12px;text-align:center;"></td>
+                  <td></td><td></td>
+                </tr></tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── OBS ── -->
+          <div class="modulo" id="mod-obs">
+            <div class="mod-head" onclick="toggleMod('mod-obs')">
+              <div class="mod-icon" style="background:var(--bg)">📝</div>
+              <div class="mod-info"><div class="mod-titulo">Observações</div><div class="mod-sub">Notas do dia</div></div>
+              <div class="mod-chev">▼</div>
+            </div>
+            <div class="mod-body">
+              <textarea class="fld-in" id="obs" rows="3" style="resize:vertical;width:100%" placeholder="Observações do dia..."></textarea>
+            </div>
+          </div>
+
+        </div><!-- /lanc-main -->
+
+        <!-- ── PAINEL LATERAL (dark) ── -->
+        <div class="lanc-side">
+          <div class="p-titulo">📊 Resumo do Dia</div>
+          <div class="p-kpi">
+            <div class="p-kpi-lbl">Total Carregado</div>
+            <div class="p-kpi-val g" id="res-carga">0 kg</div>
+          </div>
+          <div class="p-kpi" id="pk-custo">
+            <div class="p-kpi-lbl">Custo MO Total</div>
+            <div class="p-kpi-val y" id="pk-custo-val">—</div>
+          </div>
+          <div class="p-kpi">
+            <div class="p-kpi-lbl">Resultado</div>
+            <div class="p-kpi-val sm">Exibido no Dashboard</div>
+          </div>
+          <div class="p-sep"></div>
+          <div class="p-row" id="pr-roca"><div class="p-rl">🌿 MO Roça</div><div class="p-rv pend" id="pv-roca">—</div></div>
+          <div class="p-row" id="pr-galp"><div class="p-rl">🏭 MO Galpão</div><div class="p-rv pend" id="pv-galp">—</div></div>
+          <div class="p-row" id="pr-desc"><div class="p-rl">✂️ MO Descasque</div><div class="p-rv pend" id="pv-desc">—</div></div>
+          <div class="p-row" id="pr-coz"><div class="p-rl">🍳 MO Cozinha</div><div class="p-rv pend" id="pv-coz">—</div></div>
+          <div class="p-row" id="pr-obra"><div class="p-rl">🔨 MO Obra</div><div class="p-rv pend" id="pv-obra">—</div></div>
+          <div class="p-sep"></div>
+          <div class="p-sec">Matéria-Prima</div>
+          <div class="p-item"><div class="p-dot" style="background:var(--roca)"></div><div class="p-nome">Total Caixas</div><div class="p-val" id="res-cx">0 cx</div></div>
+          <div class="p-item"><div class="p-dot" style="background:var(--roca)"></div><div class="p-nome">Peso Estimado</div><div class="p-val" id="res-kg">0 kg</div></div>
+          <div class="p-sep"></div>
+          <div class="p-sec">KM Rodados</div>
+          <div class="p-item"><div class="p-dot" style="background:var(--log)"></div><div class="p-nome">Strada</div><div class="p-val" id="s-km-side">—</div></div>
+          <div class="p-item"><div class="p-dot" style="background:var(--galp)"></div><div class="p-nome">Ducato</div><div class="p-val" id="d-km-side">—</div></div>
+          <div class="p-nota">Receita e DRE calculados<br>após carregamento</div>
+        </div>
+
+      </div><!-- /lanc-layout -->
+    </div><!-- /lanc-form-dia -->
+
+    <!-- Modo PERÍODO: cards consolidados -->
+    <div id="lanc-consolidado" class="oculto">
+      <div class="cons-grid" id="cons-grid"></div>
+    </div>
+
+  </section>
+
+  <!-- ─── DESPESAS ─── -->
+  <section id="pg-despesas" class="pagina {% if pagina=='despesas' %}ativa{% endif %}">
+    <div class="desp-kpis">
+      <div class="dkpi verde"><div class="dkpi-lbl">Receitas</div><div class="dkpi-val" id="d-rec">—</div></div>
+      <div class="dkpi vermelho"><div class="dkpi-lbl">Despesas</div><div class="dkpi-val" id="d-desp">—</div></div>
+      <div class="dkpi azul"><div class="dkpi-lbl">Saldo</div><div class="dkpi-val" id="d-saldo">—</div></div>
+      <div class="dkpi roxo"><div class="dkpi-lbl">Lançamentos</div><div class="dkpi-val" id="d-qtd">—</div></div>
+    </div>
+    <div class="desp-toolbar">
+      <div class="desp-filtros" id="desp-filtros">
+        <button class="dfiltro ativo" onclick="setFiltroDesp('',this)">Todos</button>
+        <button class="dfiltro" onclick="setFiltroDesp('entrada',this)">✅ Entradas</button>
+        <button class="dfiltro" onclick="setFiltroDesp('saida',this)">🔴 Saídas</button>
+      </div>
+      <button class="btn-add" onclick="abrirFormDesp()" id="btn-nova-desp">+ Nova</button>
+    </div>
+    <div class="form-flutuante oculto" id="form-desp">
+      <div class="form-titulo">➕ Nova Despesa / Receita</div>
+      <div class="fg c2">
+        <div class="fld"><div class="fld-lbl">Data</div><input class="fld-in" type="date" id="fd-data"></div>
+        <div class="fld"><div class="fld-lbl">Tipo</div>
+          <select class="fld-in" id="fd-tipo"><option value="entrada">ENTRADA</option><option value="saida">SAÍDA</option></select>
+        </div>
+        <div class="fld"><div class="fld-lbl">Categoria</div>
+          <select class="fld-in" id="fd-cat">
+            <option>Vendas Aipim</option><option>Mão de Obra</option><option>Combustível e KM</option>
+            <option>Matéria-Prima</option><option>Embalagens/Insumos</option><option>Manutenção</option><option>Outros</option>
+          </select>
+        </div>
+        <div class="fld"><div class="fld-lbl">Valor (R$)</div><input class="fld-in" type="number" id="fd-valor" step="0.01" placeholder="0,00"></div>
+        <div class="fld" style="grid-column:1/-1"><div class="fld-lbl">Descrição</div><input class="fld-in" type="text" id="fd-desc" placeholder="Descreva o lançamento"></div>
+      </div>
+      <div class="form-acoes">
+        <button class="btn-s-form" onclick="salvarDespesa()">✓ Salvar</button>
+        <button class="btn-cancel-form" onclick="fecharFormDesp()">Cancelar</button>
+      </div>
+    </div>
+    <div class="desp-table-wrap">
+      <table class="desp-tbl">
+        <thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th class="hide-sm">Descrição</th><th>Valor</th></tr></thead>
+        <tbody id="tbody-desp"></tbody>
+      </table>
+      <div class="desp-vazio oculto" id="desp-vazio">Nenhum registro no período.</div>
+    </div>
+  </section>
+
+  <!-- ─── CADASTROS ─── -->
+  <section id="pg-cadastros" class="pagina {% if pagina=='cadastros' %}ativa{% endif %}">
+    <div class="cad-grid">
+      <div class="card">
+        <div class="card-head"><div class="card-titulo">📦 Produtos</div><button class="btn-add" onclick="toggleForm('fp')">+ Novo</button></div>
+        <div class="card-body">
+          <div class="form-flutuante oculto" id="fp">
+            <div class="fg c2">
+              <div class="fld"><div class="fld-lbl">Nome</div><input class="fld-in" type="text" id="np-nome"></div>
+              <div class="fld"><div class="fld-lbl">Área</div><select class="fld-in" id="np-area"><option value="galp">Galpão</option><option value="coz">Cozinha</option></select></div>
+              <div class="fld"><div class="fld-lbl">Preço R$/kg</div><input class="fld-in" type="number" id="np-preco" step="0.01"></div>
+              <div class="fld"><div class="fld-lbl">Cor</div><input class="fld-in" type="color" id="np-cor" value="#1A6B50" style="height:36px;padding:2px;"></div>
+            </div>
+            <div class="form-acoes"><button class="btn-s-form" onclick="salvarProduto()">✓ Salvar</button><button class="btn-cancel-form" onclick="toggleForm('fp')">Cancelar</button></div>
+          </div>
+          <div class="lista" id="lista-prod"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-titulo">👥 Colaboradores</div><button class="btn-add" onclick="toggleForm('fc')">+ Novo</button></div>
+        <div class="card-body">
+          <div class="form-flutuante oculto" id="fc">
+            <div class="fg c2">
+              <div class="fld"><div class="fld-lbl">Nome</div><input class="fld-in" type="text" id="nc-nome"></div>
+              <div class="fld"><div class="fld-lbl">Setor</div><select class="fld-in" id="nc-setor"><option value="roca">🌿 Roça</option><option value="galp">🏭 Galpão</option><option value="coz">🍳 Cozinha</option><option value="desc">✂ Descasque</option><option value="obra">🔨 Obra</option><option value="log">🚛 Logística</option></select></div>
+              <div class="fld"><div class="fld-lbl">Função</div><input class="fld-in" type="text" id="nc-func"></div>
+              <div class="fld"><div class="fld-lbl">Diária (R$)</div><input class="fld-in" type="number" id="nc-diaria" step="0.01"></div>
+            </div>
+            <div class="form-acoes"><button class="btn-s-form" onclick="salvarColab()">✓ Salvar</button><button class="btn-cancel-form" onclick="toggleForm('fc')">Cancelar</button></div>
+          </div>
+          <div class="lista" id="lista-colab"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════════════ BOTTOM NAV MOBILE ══════════════════ -->
+<nav class="bottom-nav" id="bottom-nav">
+  <a href="/dashboard"   class="bn-item {% if pagina=='dashboard' %}ativo{% endif %}"><span class="bn-icon">📊</span><span class="bn-lbl">Dashboard</span></a>
+  <a href="/lancamentos" class="bn-item {% if pagina=='lancamentos' %}ativo{% endif %}"><span class="bn-icon">📅</span><span class="bn-lbl">Lançar</span></a>
+  <a href="/despesas"    class="bn-item {% if pagina=='despesas' %}ativo{% endif %}"
+     {% if not current_user.pode_ver_financeiro %}style="opacity:.4;pointer-events:none;"{% endif %}>
+     <span class="bn-icon">💸</span><span class="bn-lbl">Despesas</span></a>
+  <a href="/cadastros"   class="bn-item {% if pagina=='cadastros' %}ativo{% endif %}"
+     {% if not current_user.pode_gerenciar %}style="opacity:.4;pointer-events:none;"{% endif %}>
+     <span class="bn-icon">🗂</span><span class="bn-lbl">Cadastros</span></a>
+</nav>
+
+<div class="toast oculto" id="toast"></div>
+
+<!-- permissões do usuário atual para JS -->
+<script>
+const USER_PERFIL = "{{ current_user.perfil }}";
+const USER_AREAS  = {{ user_areas_json }};
+const VER_FIN     = {{ user_ver_fin_json }};
+const GERENCIAR   = {{ user_gerenciar_json }};
+</script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

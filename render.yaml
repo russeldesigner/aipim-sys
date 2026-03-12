@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: aipim-sys
+    env: python
+    buildCommand: pip install -r requirements.txt && flask db upgrade
+    startCommand: gunicorn run:app --workers 2 --timeout 60
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_APP
+        value: run.py
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aipim-db
+          property: connectionString
+
+databases:
+  - name: aipim-db
+    plan: free
